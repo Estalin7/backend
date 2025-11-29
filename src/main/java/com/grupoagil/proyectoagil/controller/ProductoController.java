@@ -42,7 +42,7 @@ public class ProductoController {
     }
 
     /**
-     * Crear un nuevo producto con imagen
+     * Crear un nuevo producto
      */
     @PostMapping
     public ResponseEntity<?> createProducto(
@@ -68,8 +68,9 @@ public class ProductoController {
         }
     }
 
+
     /**
-     * Editar un producto por su nombre con imagen
+     * Editar un producto por su nombre
      */
     @PutMapping("/editar/{nombreExistente}")
     public ResponseEntity<?> editProducto(
@@ -112,9 +113,11 @@ public class ProductoController {
         }
     }
 
+
     /**
      * Buscar un producto por su nombre
      */
+    
     @GetMapping("/buscar/{nombre}")
     public ResponseEntity<?> buscarProducto(@PathVariable String nombre) {
         Optional<Producto> productoOpt = productoService.findByNombre(nombre);
@@ -130,9 +133,6 @@ public class ProductoController {
         }
     }
 
-    /**
-     * Buscar productos por categoría
-     */
     @GetMapping("/categoria/{nombreCategoria}")
     public ResponseEntity<?> buscarPorCategoria(@PathVariable String nombreCategoria) {
         try {
@@ -142,4 +142,5 @@ public class ProductoController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
 }

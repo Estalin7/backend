@@ -7,5 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.grupoagil.proyectoagil.model.Usuario;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, String> {
-    Optional<Usuario> findByUserAndPassword(String user, String password);
+    Optional<Usuario> findByUserIgnoreCase(String user);
+
+    boolean existsByEmailIgnoreCase(String email);
+    boolean existsByDni(String dni);
 }

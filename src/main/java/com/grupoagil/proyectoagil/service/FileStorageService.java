@@ -22,7 +22,7 @@ public class FileStorageService {
         
         try {
             Files.createDirectories(this.fileStorageLocation);
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             throw new RuntimeException("No se pudo crear el directorio para almacenar archivos.", ex);
         }
     }

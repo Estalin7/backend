@@ -16,16 +16,15 @@ public class Categoria {
     @Column(name = "nombre", nullable = false, length = 20)
     private String nombre;
 
-    // Constructor vacío
+    
     public Categoria() {}
 
-    // Constructor con parámetros
+    
     public Categoria(Long idCategoria, String nombre) {
         this.idCategoria = idCategoria;
         this.nombre = nombre;
     }
 
-    // Getters y Setters
     public Long getIdCategoria() {
         return idCategoria;
     }

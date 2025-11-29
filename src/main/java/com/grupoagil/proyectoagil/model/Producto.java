@@ -89,6 +89,8 @@ public class Producto {
         this.imagenUrl = imagenUrl;
     }
 
+
+
     public Categoria getCategoria() {
         return categoria;
     }

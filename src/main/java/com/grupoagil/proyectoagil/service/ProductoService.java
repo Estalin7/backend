@@ -48,6 +48,8 @@ public class ProductoService {
                 .orElse(new Inventario(idProducto, 0));
     }
 
+
+    
     public Producto createProducto(String nombre, String categoriaNombre, Double precio,
                                    String descripcion, Integer cantidadDisponible, String imagenUrl) {
 
@@ -73,6 +75,7 @@ public class ProductoService {
         return newProducto;
     }
 
+    
     public Producto editProducto(String nombreExistente, String nuevoNombre, String categoriaNombre, 
                                 Double precio, String descripcion, Integer cantidadDisponible, String nuevaImagenUrl) {
         Producto producto = findByNombre(nombreExistente)
@@ -113,6 +116,7 @@ public class ProductoService {
                 .collect(Collectors.toList());
     }
 
+
     public static class ProductoResponse {
         private final Long idProducto;
         private final String nombre;
@@ -121,7 +125,7 @@ public class ProductoService {
         private final String descripcion;
         private final String imagenUrl;
         private final Integer cantidad;
-        private final String estado;
+        private final String estado; // "Disponible" o "Agotado"
 
         public ProductoResponse(Producto p, int cantidad) {
             this.idProducto = p.getIdProducto();
@@ -134,7 +138,7 @@ public class ProductoService {
             this.estado = cantidad > 0 ? "Disponible" : "Agotado";
         }
 
-        // Getters
+        // --- Getters y Setters ---
         public Long getIdProducto() { return idProducto; }
         public String getNombre() { return nombre; }
         public Categoria getCategoria() { return categoria; }
@@ -144,4 +148,6 @@ public class ProductoService {
         public Integer getCantidad() { return cantidad; }
         public String getEstado() { return estado; }
     }
+
+    
 }

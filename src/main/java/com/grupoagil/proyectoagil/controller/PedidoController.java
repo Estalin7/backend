@@ -3,16 +3,23 @@ package com.grupoagil.proyectoagil.controller;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.grupoagil.proyectoagil.dto.CocinaPedidoDTO;
+import com.grupoagil.proyectoagil.dto.ModificarPedidoDTO;
+import com.grupoagil.proyectoagil.dto.PedidoDTO;
 import com.grupoagil.proyectoagil.model.Pedido;
 import com.grupoagil.proyectoagil.service.PedidoService;
 
@@ -23,63 +30,116 @@ public class PedidoController {
 
     private final PedidoService pedidoService;
 
+    @Autowired
     public PedidoController(PedidoService pedidoService) {
         this.pedidoService = pedidoService;
     }
-
-    /** Crear pedido para una mesa (requiere idMesa, idUsuario; estadoInicial opcional) */
+    
+    // Crear un nuevo pedido
     @PostMapping
-    public ResponseEntity<?> crearPedido(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> crearPedido(@RequestBody PedidoDTO pedidoDTO) {
         try {
-            Long idMesa = Long.valueOf(body.get("idMesa").toString());
-            String idUsuario = body.get("idUsuario").toString();
-            String estadoInicial = body.get("estado") == null ? null : body.get("estado").toString();
-
-            Pedido creado = pedidoService.crearPedido(idMesa, idUsuario, estadoInicial);
-            return ResponseEntity.ok(creado);
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            Pedido pedidoCreado = pedidoService.crearPedido(pedidoDTO);
+            return new ResponseEntity<>(pedidoCreado, HttpStatus.CREATED);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    /** ¿La mesa tiene pedido abierto? */
-    @GetMapping("/mesa/{idMesa}/tiene-abierto")
-    public Map<String, Object> mesaTieneAbierto(@PathVariable Long idMesa) {
-        boolean tiene = pedidoService.mesaTienePedidoAbierto(idMesa);
-        return Map.of("idMesa", idMesa, "tieneAbierto", tiene);
+    // Obtener todos los pedidos (para administración)
+    @GetMapping("/admin")
+    public ResponseEntity<List<Pedido>> obtenerTodos() {
+        return ResponseEntity.ok(pedidoService.obtenerTodos());
     }
 
-    /** Obtener el pedido abierto de una mesa (si existe) */
-    @GetMapping("/mesa/{idMesa}/abierto")
-    public ResponseEntity<?> pedidoAbiertoDeMesa(@PathVariable Long idMesa) {
-        return pedidoService.obtenerPedidoAbiertoPorMesa(idMesa)
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.ok(Map.of("mensaje", "La mesa no tiene pedido abierto.")));
+    // Obtener un pedido por ID
+    @GetMapping("/{id}")
+    public ResponseEntity<Pedido> obtenerPorId(@PathVariable Long id) {
+        return pedidoService.obtenerPorId(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
-
-    /** Listar pedidos de una mesa */
-    @GetMapping("/mesa/{idMesa}")
-    public List<Pedido> listarPorMesa(@PathVariable Long idMesa) {
-        return pedidoService.listarPorMesa(idMesa);
+    
+    // Obtener pedidos para la vista de cocina (Ordenado, EN_PREPARACION)
+    @GetMapping("/cocina")
+    public ResponseEntity<List<CocinaPedidoDTO>> obtenerPedidosCocina() {
+        return ResponseEntity.ok(pedidoService.obtenerPedidosCocina());
     }
-
-    /** Cambiar estado de un pedido (Ordenado, En Preparación, Atendido, Pagado, Cancelado) */
-    @PatchMapping("/{idPedido}/estado")
-    public ResponseEntity<?> cambiarEstado(@PathVariable Long idPedido, @RequestBody Map<String, String> body) {
+    
+    // Actualizar estado del pedido
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<?> actualizarEstado(@PathVariable Long id, @RequestParam String estado) {
+        if (estado == null || estado.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El estado no puede estar vacío"));
+        }
+        
         try {
-            String nuevoEstado = body.get("estado");
-            Pedido actualizado = pedidoService.cambiarEstado(idPedido, nuevoEstado);
-            return ResponseEntity.ok(actualizado);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            return pedidoService.actualizarEstado(id, estado.toUpperCase())
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    /** Obtener un pedido por ID */
-    @GetMapping("/{idPedido}")
-    public ResponseEntity<?> obtenerPorId(@PathVariable Long idPedido) {
-        return pedidoService.obtenerPorId(idPedido)
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.badRequest().body(Map.of("error", "Pedido no encontrado")));
+    // Obtener pedidos ATENDIDOS para pagos (devuelve Pedido completo)
+    @GetMapping("/parapago")
+    public ResponseEntity<List<Pedido>> obtenerPedidosParaPago() {
+        return ResponseEntity.ok(pedidoService.obtenerPedidosParaPago());
+    }
+
+    // Obtener pedidos ATENDIDOS como DTO para meseros
+    @GetMapping("/atendidos")
+    public ResponseEntity<List<CocinaPedidoDTO>> obtenerPedidosAtendidos() {
+        return ResponseEntity.ok(pedidoService.obtenerPedidosAtendidos());
+    }
+
+    // Obtener pedidos ORDENADOS del mesero (para cancelar)
+    @GetMapping("/mis-pedidos/{idUser}")
+    public ResponseEntity<List<CocinaPedidoDTO>> obtenerMisPedidosOrdenados(@PathVariable String idUser) {
+        return ResponseEntity.ok(pedidoService.obtenerPedidosOrdenadosMesero(idUser));
+    }
+
+    // Obtener pedidos MODIFICABLES del mesero
+    @GetMapping("/modificables/{idUser}")
+    public ResponseEntity<?> obtenerPedidosModificables(@PathVariable String idUser) {
+        try {
+            return ResponseEntity.ok(pedidoService.obtenerPedidosModificablesMesero(idUser));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // MODIFICAR PEDIDO
+    @PutMapping("/{id}/modificar")
+    public ResponseEntity<?> modificarPedido(
+            @PathVariable Long id, 
+            @RequestBody ModificarPedidoDTO modificacionDTO) {
+        try {
+            Pedido pedidoModificado = pedidoService.modificarPedido(id, modificacionDTO);
+            return ResponseEntity.ok(Map.of(
+                "mensaje", "Pedido #" + id + " modificado exitosamente",
+                "idPedido", pedidoModificado.getIdPedido(),
+                "estado", pedidoModificado.getEstado(),
+                "modificado", pedidoModificado.getModificado()
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Cancelar pedido
+    @PatchMapping("/{id}/cancelar")
+    public ResponseEntity<?> cancelarPedido(@PathVariable Long id, @RequestParam String idUser) {
+        try {
+            Pedido pedidoCancelado = pedidoService.cancelarPedido(id, idUser);
+            return ResponseEntity.ok(Map.of(
+                "mensaje", "Pedido #" + id + " cancelado exitosamente",
+                "pedido", pedidoCancelado.getIdPedido(),
+                "estado", pedidoCancelado.getEstado()
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

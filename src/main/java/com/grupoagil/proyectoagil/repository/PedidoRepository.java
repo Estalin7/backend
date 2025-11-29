@@ -1,17 +1,21 @@
 package com.grupoagil.proyectoagil.repository;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
+import com.grupoagil.proyectoagil.model.Mesa;
 import com.grupoagil.proyectoagil.model.Pedido;
+import com.grupoagil.proyectoagil.model.Usuario;
 
+@Repository
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
+    
+    // Busca pedidos por estados (para la vista de cocina)
+    List<Pedido> findByEstadoIn(List<String> estados);
 
-    List<Pedido> findByMesa_IdMesaOrderByFechaDesc(Long idMesa);
+    List<Pedido> findByMesaAndEstadoNotIn(Mesa mesa, List<String> estadosFinales);
 
-    boolean existsByMesa_IdMesaAndEstadoIn(Long idMesa, List<String> estados);
-
-    Optional<Pedido> findFirstByMesa_IdMesaAndEstadoInOrderByFechaDesc(Long idMesa, List<String> estados);
+    List<Pedido> findByUsuarioAndEstadoInOrderByIdPedidoDesc(Usuario usuario, List<String> estados);
 }
