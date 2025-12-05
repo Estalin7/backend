@@ -134,7 +134,16 @@ public class PedidoService {
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + idPedido));
         double subtotal = pedido.getDetalles().stream()
                 .mapToDouble(d -> d.getPrecioUnitario() * d.getCantidad()).sum();
-        return subtotal + (subtotal * 0.18);
+
+        double totalConIgv = subtotal + (subtotal * 0.18);
+
+        // Redondear al siguiente múltiplo de 0.10
+        return redondearAlSiguienteDecimal(totalConIgv);
+    }
+
+    private Double redondearAlSiguienteDecimal(Double monto) {
+    // Se redondea hacia el siguiente múltiplo de 0.10
+        return Math.ceil(monto * 10) / 10.0;
     }
 
     @Transactional(readOnly = true)
@@ -387,3 +396,4 @@ public class PedidoService {
         );
     }
 }
+
