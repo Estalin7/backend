@@ -1,70 +1,63 @@
 package com.grupoagil.proyectoagil.service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.UUID;
-
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class FileStorageService {
 
-    private final Path fileStorageLocation;
+    private final Cloudinary cloudinary;
 
-    public FileStorageService(@Value("${file.upload-dir:uploads/productos}") String uploadDir) {
-        this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
+    public FileStorageService(
+            @Value("${cloudinary.cloud_name}") String cloudName,
+            @Value("${cloudinary.api_key}") String apiKey,
+            @Value("${cloudinary.api_secret}") String apiSecret) {
         
-        try {
-            Files.createDirectories(this.fileStorageLocation);
-        } catch (IOException ex) {
-            throw new RuntimeException("No se pudo crear el directorio para almacenar archivos.", ex);
-        }
+        Map<String, String> config = new HashMap<>();
+        config.put("cloud_name", cloudName);
+        config.put("api_key", apiKey);
+        config.put("api_secret", apiSecret);
+        this.cloudinary = new Cloudinary(config);
     }
 
     public String storeFile(MultipartFile file) {
-        // Normalizar nombre del archivo
-        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
-        
         try {
-            // Validar el archivo
-            if (originalFileName.contains("..")) {
-                throw new RuntimeException("El nombre del archivo contiene una secuencia de ruta no válida " + originalFileName);
-            }
-
-            // Generar un nombre único para el archivo
-            String fileExtension = "";
-            if (originalFileName.contains(".")) {
-                fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
-            }
-            
-            String newFileName = UUID.randomUUID().toString() + fileExtension;
-
-            // Copiar archivo a la ubicación de destino
-            Path targetLocation = this.fileStorageLocation.resolve(newFileName);
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-
-            return newFileName;
+            // Subir a Cloudinary
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+            // Retornar la URL pública de la imagen
+            return (String) uploadResult.get("secure_url");
         } catch (IOException ex) {
-            throw new RuntimeException("No se pudo almacenar el archivo " + originalFileName + ". Inténtelo de nuevo.", ex);
+            throw new RuntimeException("Error al subir la imagen a Cloudinary", ex);
         }
     }
 
-    public void deleteFile(String fileName) {
+    public void deleteFile(String imageUrl) {
         try {
-            Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
-            Files.deleteIfExists(filePath);
+            // Extraer el "public_id" de la URL para poder borrarla
+            // Ejemplo URL: https://res.cloudinary.com/.../imagen.jpg -> public_id: imagen
+            String publicId = obtenerPublicIdDesdeUrl(imageUrl);
+            if(publicId != null) {
+                cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            }
         } catch (IOException ex) {
-            throw new RuntimeException("No se pudo eliminar el archivo " + fileName, ex);
+            System.err.println("No se pudo eliminar la imagen antigua de Cloudinary: " + ex.getMessage());
         }
     }
-
-    public Path getFileStorageLocation() {
-        return fileStorageLocation;
+    
+    private String obtenerPublicIdDesdeUrl(String imageUrl) {
+        // Lógica simple para extraer el ID del nombre del archivo
+        try {
+            String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+            return fileName.substring(0, fileName.lastIndexOf("."));
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
