@@ -57,8 +57,9 @@ public class ProductoController {
             
             // Si se subió una imagen, guardarla
             if (imagen != null && !imagen.isEmpty()) {
-                String fileName = fileStorageService.storeFile(imagen);
-                imagenUrl = "/uploads/productos/" + fileName;
+              //  String fileName = fileStorageService.storeFile(imagen);
+              //  imagenUrl = "/uploads/productos/" + fileName;
+                imagenUrl = fileStorageService.storeFile(imagen);
             }
 
             Producto producto = productoService.createProducto(nombre, categoria, precio, descripcion, cantidadDisponible, imagenUrl);
@@ -85,17 +86,16 @@ public class ProductoController {
             String imagenUrl = null;
             
             // Si se subió una nueva imagen, guardarla
-            if (imagen != null && !imagen.isEmpty()) {
-                // Eliminar la imagen anterior si existe
-                Optional<Producto> productoExistente = productoService.findByNombre(nombreExistente);
-                if (productoExistente.isPresent() && productoExistente.get().getImagenUrl() != null) {
-                    String oldFileName = productoExistente.get().getImagenUrl().replace("/uploads/productos/", "");
-                    fileStorageService.deleteFile(oldFileName);
-                }
-                
-                String fileName = fileStorageService.storeFile(imagen);
-                imagenUrl = "/uploads/productos/" + fileName;
+           if (imagen != null && !imagen.isEmpty()) {
+            Optional<Producto> productoExistente = productoService.findByNombre(nombreExistente);
+            if (productoExistente.isPresent() && productoExistente.get().getImagenUrl() != null) {
+                // Pasamos la URL completa para borrar
+                fileStorageService.deleteFile(productoExistente.get().getImagenUrl());
             }
+    
+            // Guardamos la nueva URL directa
+            imagenUrl = fileStorageService.storeFile(imagen);
+        }
 
             Producto productoActualizado = productoService.editProducto(
                     nombreExistente,
